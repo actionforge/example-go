@@ -1,0 +1,108 @@
+entry: gh-start
+nodes:
+  - id: gh-start
+    type: core/gh-start@v1
+    position:
+      x: -150
+      y: 20
+  - id: checkout
+    type: github.com/actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+    position:
+      x: 270
+      y: 660
+  - id: setup-go
+    type: github.com/actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+    position:
+      x: 810
+      y: 610
+    inputs:
+      go-version: '1.25'
+      check-latest: 'false'
+  - id: build
+    type: core/run@v1
+    position:
+      x: 1290
+      y: 540
+    inputs:
+      script: go build -o hello-world .
+  - id: upload-artifact
+    type: >-
+      github.com/actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+    position:
+      x: 1720
+      y: 460
+    inputs:
+      name: hello-world
+      path: hello-world
+  - id: core-print-v1-cat-koala-pear
+    type: core/print@v1
+    position:
+      x: 2600
+      y: 420
+    inputs:
+      values[0]: null
+      color: fg_green
+  - id: core-string-fmt-v1-grapefruit-rabbit-sheep
+    type: core/string-fmt@v1
+    position:
+      x: 2200
+      y: 620
+    inputs:
+      substitutes[0]: null
+      fmt: 👉 %v
+connections:
+  - src:
+      node: upload-artifact
+      port: artifact-url
+    dst:
+      node: core-string-fmt-v1-grapefruit-rabbit-sheep
+      port: substitutes[0]
+  - src:
+      node: core-string-fmt-v1-grapefruit-rabbit-sheep
+      port: result
+    dst:
+      node: core-print-v1-cat-koala-pear
+      port: values[0]
+executions:
+  - src:
+      node: gh-start
+      port: exec-on_push
+    dst:
+      node: checkout
+      port: exec
+  - src:
+      node: gh-start
+      port: exec-on_pull_request
+    dst:
+      node: checkout
+      port: exec
+  - src:
+      node: gh-start
+      port: exec-on_workflow_dispatch
+    dst:
+      node: checkout
+      port: exec
+  - src:
+      node: checkout
+      port: exec-success
+    dst:
+      node: setup-go
+      port: exec
+  - src:
+      node: setup-go
+      port: exec-success
+    dst:
+      node: build
+      port: exec
+  - src:
+      node: build
+      port: exec-success
+    dst:
+      node: upload-artifact
+      port: exec
+  - src:
+      node: upload-artifact
+      port: exec-success
+    dst:
+      node: core-print-v1-cat-koala-pear
+      port: exec
