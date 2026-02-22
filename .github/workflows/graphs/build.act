@@ -34,10 +34,497 @@ nodes:
     inputs:
       name: hello-world
       path: hello-world
+  - id: sbom-action
+    type: github.com/anchore/sbom-action@v0
+    position:
+      x: 2200
+      y: 460
+    inputs:
+      file: hello-world
+      output-file: hello-world.sbom.json
+      upload-artifact: 'false'
+  - id: attest-build-provenance
+    type: core/group@v1
+    position:
+      x: 2700
+      y: 460
+    inputs:
+      subject-path: hello-world
+    graph:
+      entry: core-group-inputs-v1-start
+      type: group
+      nodes:
+        - id: core-group-inputs-v1-start
+          type: core/group-inputs@v1
+        - id: generate-build-provenance-predicate
+          type: >-
+            github.com/actions/attest-build-provenance/predicate@1176ef556905f349f669722abf30bce1a6e16e01
+        - id: attest
+          type: github.com/actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc
+        - id: core-group-outputs-v1-end
+          type: core/group-outputs@v1
+      connections:
+        - src:
+            node: core-group-inputs-v1-start
+            port: env
+          dst:
+            node: generate-build-provenance-predicate
+            port: env
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-path
+          dst:
+            node: attest
+            port: subject-path
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-checksums
+          dst:
+            node: attest
+            port: subject-checksums
+        - src:
+            node: generate-build-provenance-predicate
+            port: predicate
+          dst:
+            node: attest
+            port: predicate
+        - src:
+            node: core-group-inputs-v1-start
+            port: push-to-registry
+          dst:
+            node: attest
+            port: push-to-registry
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-digest
+          dst:
+            node: attest
+            port: subject-digest
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-name
+          dst:
+            node: attest
+            port: subject-name
+        - src:
+            node: generate-build-provenance-predicate
+            port: predicate-type
+          dst:
+            node: attest
+            port: predicate-type
+        - src:
+            node: core-group-inputs-v1-start
+            port: show-summary
+          dst:
+            node: attest
+            port: show-summary
+        - src:
+            node: core-group-inputs-v1-start
+            port: github-token
+          dst:
+            node: attest
+            port: github-token
+        - src:
+            node: core-group-inputs-v1-start
+            port: env
+          dst:
+            node: attest
+            port: env
+        - src:
+            node: attest
+            port: attestation-id
+          dst:
+            node: core-group-outputs-v1-end
+            port: attestation-id
+        - src:
+            node: attest
+            port: attestation-url
+          dst:
+            node: core-group-outputs-v1-end
+            port: attestation-url
+        - src:
+            node: attest
+            port: bundle-path
+          dst:
+            node: core-group-outputs-v1-end
+            port: bundle-path
+      executions:
+        - src:
+            node: core-group-inputs-v1-start
+            port: exec
+          dst:
+            node: generate-build-provenance-predicate
+            port: exec
+        - src:
+            node: generate-build-provenance-predicate
+            port: exec-err
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-err
+        - src:
+            node: generate-build-provenance-predicate
+            port: exec-success
+          dst:
+            node: attest
+            port: exec
+        - src:
+            node: attest
+            port: exec-err
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-err
+        - src:
+            node: attest
+            port: exec-success
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-success
+      inputs:
+        env:
+          name: Environment Vars
+          type: '[]string'
+          index: 8
+          hint: MY_ENV=1234
+        exec:
+          name: ''
+          type: ''
+          index: 0
+          exec: true
+        github-token:
+          name: github-token
+          type: string
+          desc: >
+            The GitHub token used to make authenticated API requests.
+          index: 1
+          default: ${{ github.token }}
+        push-to-registry:
+          name: push-to-registry
+          type: string
+          desc: >
+            Whether to push the provenance statement to the image registry.
+            Requires that the "subject-name" parameter specify the
+            fully-qualified image name and that the "subject-digest" parameter
+            be specified. Defaults to false.
+          index: 2
+          default: false
+        show-summary:
+          name: show-summary
+          type: string
+          desc: >
+            Whether to attach a list of generated attestations to the workflow
+            run summary page. Defaults to true.
+          index: 3
+          default: true
+        subject-checksums:
+          name: subject-checksums
+          type: string
+          desc: >
+            Path to checksums file containing digest and name of subjects for
+            attestation. Must specify exactly one of "subject-path",
+            "subject-digest", or "subject-checksums".
+          index: 4
+        subject-digest:
+          name: subject-digest
+          type: string
+          desc: >
+            Digest of the subject for which provenance will be generated. Must
+            be in the form "algorithm:hex_digest" (e.g. "sha256:abc123...").
+            Must specify exactly one of "subject-path", "subject-digest", or
+            "subject-checksums".
+          index: 5
+        subject-name:
+          name: subject-name
+          type: string
+          desc: >
+            Subject name as it should appear in the attestation. Required when
+            identifying the subject with the "subject-digest" input.
+          index: 6
+        subject-path:
+          name: subject-path
+          type: string
+          desc: >
+            Path to the artifact serving as the subject of the attestation.
+            Must specify exactly one of "subject-path", "subject-digest", or
+            "subject-checksums". May contain a glob pattern or list of paths
+            (total subject count cannot exceed 1024).
+          index: 7
+      outputs:
+        attestation-id:
+          name: attestation-id
+          type: string
+          desc: The ID of the attestation.
+          index: 2
+        attestation-url:
+          name: attestation-url
+          type: string
+          desc: The URL for the attestation summary.
+          index: 3
+        bundle-path:
+          name: bundle-path
+          type: string
+          desc: The path to the file containing the attestation bundle.
+          index: 4
+        exec-err:
+          name: Error
+          type: ''
+          index: 1
+          exec: true
+        exec-success:
+          name: Success
+          type: ''
+          index: 0
+          exec: true
+    label: Attest Build Provenance
+  - id: attest-sbom
+    type: core/group@v1
+    position:
+      x: 3200
+      y: 460
+    inputs:
+      subject-path: hello-world
+      sbom-path: hello-world.sbom.json
+    graph:
+      entry: core-group-inputs-v1-start
+      type: group
+      nodes:
+        - id: core-group-inputs-v1-start
+          type: core/group-inputs@v1
+        - id: generate-sbom-predicate
+          type: >-
+            github.com/actions/attest-sbom/predicate@534423496eab34674190bc45fdacbb8b1198e07f
+        - id: attest
+          type: github.com/actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc
+        - id: core-group-outputs-v1-end
+          type: core/group-outputs@v1
+      connections:
+        - src:
+            node: core-group-inputs-v1-start
+            port: sbom-path
+          dst:
+            node: generate-sbom-predicate
+            port: sbom-path
+        - src:
+            node: core-group-inputs-v1-start
+            port: env
+          dst:
+            node: generate-sbom-predicate
+            port: env
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-digest
+          dst:
+            node: attest
+            port: subject-digest
+        - src:
+            node: generate-sbom-predicate
+            port: predicate-type
+          dst:
+            node: attest
+            port: predicate-type
+        - src:
+            node: core-group-inputs-v1-start
+            port: push-to-registry
+          dst:
+            node: attest
+            port: push-to-registry
+        - src:
+            node: core-group-inputs-v1-start
+            port: show-summary
+          dst:
+            node: attest
+            port: show-summary
+        - src:
+            node: core-group-inputs-v1-start
+            port: github-token
+          dst:
+            node: attest
+            port: github-token
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-path
+          dst:
+            node: attest
+            port: subject-path
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-name
+          dst:
+            node: attest
+            port: subject-name
+        - src:
+            node: core-group-inputs-v1-start
+            port: subject-checksums
+          dst:
+            node: attest
+            port: subject-checksums
+        - src:
+            node: generate-sbom-predicate
+            port: predicate-path
+          dst:
+            node: attest
+            port: predicate-path
+        - src:
+            node: core-group-inputs-v1-start
+            port: env
+          dst:
+            node: attest
+            port: env
+        - src:
+            node: attest
+            port: bundle-path
+          dst:
+            node: core-group-outputs-v1-end
+            port: bundle-path
+        - src:
+            node: attest
+            port: attestation-id
+          dst:
+            node: core-group-outputs-v1-end
+            port: attestation-id
+        - src:
+            node: attest
+            port: attestation-url
+          dst:
+            node: core-group-outputs-v1-end
+            port: attestation-url
+      executions:
+        - src:
+            node: core-group-inputs-v1-start
+            port: exec
+          dst:
+            node: generate-sbom-predicate
+            port: exec
+        - src:
+            node: generate-sbom-predicate
+            port: exec-err
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-err
+        - src:
+            node: generate-sbom-predicate
+            port: exec-success
+          dst:
+            node: attest
+            port: exec
+        - src:
+            node: attest
+            port: exec-err
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-err
+        - src:
+            node: attest
+            port: exec-success
+          dst:
+            node: core-group-outputs-v1-end
+            port: exec-success
+      inputs:
+        env:
+          name: Environment Vars
+          type: '[]string'
+          index: 9
+          hint: MY_ENV=1234
+        exec:
+          name: ''
+          type: ''
+          index: 0
+          exec: true
+        github-token:
+          name: github-token
+          type: string
+          desc: >
+            The GitHub token used to make authenticated API requests.
+          index: 1
+          default: ${{ github.token }}
+        push-to-registry:
+          name: push-to-registry
+          type: string
+          desc: >
+            Whether to push the provenance statement to the image registry.
+            Requires that the "subject-name" parameter specify the
+            fully-qualified image name and that the "subject-digest" parameter
+            be specified. Defaults to false.
+          index: 2
+          default: false
+        sbom-path:
+          name: sbom-path
+          type: string
+          desc: >
+            Path to the JSON-formatted SBOM file to attest. File size cannot
+            exceed 16MB.
+          index: 3
+        show-summary:
+          name: show-summary
+          type: string
+          desc: >
+            Whether to attach a list of generated attestations to the workflow
+            run summary page. Defaults to true.
+          index: 4
+          default: true
+        subject-checksums:
+          name: subject-checksums
+          type: string
+          desc: >
+            Path to checksums file containing digest and name of subjects for
+            attestation. Must specify exactly one of "subject-path",
+            "subject-digest", or "subject-checksums".
+          index: 5
+        subject-digest:
+          name: subject-digest
+          type: string
+          desc: >
+            SHA256 digest of the subject for the attestation. Must be in the
+            form "sha256:hex_digest" (e.g. "sha256:abc123..."). Must specify
+            exactly one of "subject-path" or "subject-digest".
+          index: 6
+        subject-name:
+          name: subject-name
+          type: string
+          desc: >
+            Subject name as it should appear in the attestation. Required
+            unless "subject-path" is specified, in which case it will be
+            inferred from the path.
+          index: 7
+        subject-path:
+          name: subject-path
+          type: string
+          desc: >
+            Path to the artifact serving as the subject of the attestation.
+            Must specify exactly one of "subject-path" or "subject-digest".
+            May contain a glob pattern or list of paths (total subject count
+            cannot exceed 2500).
+          index: 8
+      outputs:
+        attestation-id:
+          name: attestation-id
+          type: string
+          desc: The ID of the attestation.
+          index: 2
+        attestation-url:
+          name: attestation-url
+          type: string
+          desc: The URL for the attestation summary.
+          index: 3
+        bundle-path:
+          name: bundle-path
+          type: string
+          desc: The path to the file containing the attestation bundle(s).
+          index: 4
+        exec-err:
+          name: Error
+          type: ''
+          index: 1
+          exec: true
+        exec-success:
+          name: Success
+          type: ''
+          index: 0
+          exec: true
+    label: Attest SBOM
   - id: core-print-v1-cat-koala-pear
     type: core/print@v1
     position:
-      x: 2600
+      x: 4000
       y: 420
     inputs:
       values[0]: null
@@ -45,11 +532,11 @@ nodes:
   - id: core-string-fmt-v1-grapefruit-rabbit-sheep
     type: core/string-fmt@v1
     position:
-      x: 2200
+      x: 3600
       y: 620
     inputs:
       substitutes[0]: null
-      fmt: 👉 %v
+      fmt: "\U0001F449 %v"
 connections:
   - src:
       node: upload-artifact
@@ -102,6 +589,24 @@ executions:
       port: exec
   - src:
       node: upload-artifact
+      port: exec-success
+    dst:
+      node: sbom-action
+      port: exec
+  - src:
+      node: sbom-action
+      port: exec-success
+    dst:
+      node: attest-build-provenance
+      port: exec
+  - src:
+      node: attest-build-provenance
+      port: exec-success
+    dst:
+      node: attest-sbom
+      port: exec
+  - src:
+      node: attest-sbom
       port: exec-success
     dst:
       node: core-print-v1-cat-koala-pear
